@@ -1,3 +1,4 @@
+$d = get-date
 echo "USB Backup started" > c:\temp\USBBackup.log
 
 try
@@ -18,8 +19,10 @@ else
 }    
 
 #COMPRESS USB STICK CONTENT
+Compress-Archive -Path $x -CompressionLevel Optimal -DestinationPath C:\temp\$d
+
 #UPLOAD COMPRESSED ARCHIVE TO GOOGLE DRIVE
 
-$d = get-date
+
 echo $d >> c:\temp\USBBackup.log
 echo Done. >> c:\temp\USBBackup.log
