@@ -1,10 +1,25 @@
-$date = Get-Date -Format yyyyMMddTHHmm
+$date = Get-Date -Format yyyyMMddHHmm
 $path = $MyInvocation.MyCommand.Path
 $path = $path -replace "USB_Backup_Script.ps1", ""
-$backup = $path + 'backup'
+$backup = $path + 'backup' 
 $log = $path + "USBBackup.log"
 
 echo "UltraBackupper started" > $log
+$answer = Read-Host "Do you want to start UltraBackupper? (y/n)"
+
+if($answer.ToLowerInvariant().Equals("n")){
+    exit
+}
+
+$existingFiles = Get-ChildItem -Path $backup
+foreach ($file in $existingFiles) {
+    $fileNameParsed = [datetime]::parseexact($file, 'yyyyMMddHHmm', $null)
+    if($date.AddSeconds(-10) -lt $fileNameParsed){
+        $dateErrorMessage = "Script was executed at: " + $fileNameParsed + " now it is: " + $date
+        echo $dateErrorMessage >> $log
+        exit
+    }
+}
 
 try
 {
@@ -21,12 +36,23 @@ else
     echo "Null Drive Letter: Unable to locate External USB Drive [USB_D2D] for D2D Backup." >> $log
     exit 
 }    
-    
-#COMPRESS USB STICK CONTENT
-Compress-Archive -Path $x -CompressionLevel Optimal -DestinationPath C:\temp\$d
 
+$dir = $dir + "\*"
+$backup = $backup + "\" + $date
+
+#create directory
+new-item $backup -itemtype directory
+
+#COMPRESS USB STICK CONTENT
+try{
+Compress-Archive -Path $dir -CompressionLevel Optimal -DestinationPath $backup
+} catch{
+    $errorMessage = "COMPRESSION ERROR source folder: " + $dir + " destination folder: " + $backup
+    echo $errorMessage >> $log
+    exit
+}
 #UPLOAD COMPRESSED ARCHIVE TO GOOGLE DRIVE
 
 
-echo $date >> .\USBBackup.log
-echo Done. >> .\USBBackup.log
+echo $date >> $log
+echo Done. >> $log
