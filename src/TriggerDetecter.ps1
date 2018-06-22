@@ -21,8 +21,8 @@ write-host (get-date -format s) " Drive label = " $driveLabel
 # Execute process if drive matches specified condition(s)
 write-host (get-date -format s) " Starting task in 3 seconds..."
 start-sleep -seconds 3
-start-process "SCRIPT PATH"
-& "SCRIPT PATH"
+start-process ".\USB_Backup_Script.ps1"
+& ".\USB_Backup_Script.ps1"
 }
 Remove-Event -SourceIdentifier volumeChange
 } while (1-eq1) #Loop until next event
