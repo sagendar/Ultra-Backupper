@@ -1,7 +1,6 @@
 $date = Get-Date -Format yyyyMMddHHmmss
 $path = $MyInvocation.MyCommand.Path
 $path = $path -replace "USB_Backup_Script.ps1", ""
-$backup = $path + 'backup' 
 $log = $path + "USBBackup.log"
 
 echo "UltraBackupper started" > $log
@@ -9,24 +8,6 @@ $answer = Read-Host "Do you want to start UltraBackupper? (y/n)"
 
 if ($answer.ToLowerInvariant().Equals("n")) {
     exit
-}
-
-if (Test-Path -Path $backup) {
-    $existingFiles = Get-ChildItem -Path $backup
-    foreach ($file in $existingFiles) {
-        $file = $file -replace ".zip", ""
-        $fileNameParsed = [datetime]::parseexact($file, 'yyyyMMddHHmmss', $null)
-        if ($date.AddSeconds(-10) -lt $fileNameParsed) {
-            $dateErrorMessage = "Script was executed at: " + $fileNameParsed + " now it is: " + $date
-            echo $dateErrorMessage >> $log
-            exit
-        }
-    } 
-}
-else {
-    #create directory
-    new-item $backup -itemtype directory
-    echo "Folder created: " $backup >> $log
 }
 
 try {
@@ -43,14 +24,14 @@ else {
 }    
 
 $dir = $dir + "\*"
-$backup = $backup + "\" + $date
+$backupFilePath = $path + "\" + $date
 
 #COMPRESS USB STICK CONTENT
 try {
-    Compress-Archive -Path $dir -CompressionLevel Optimal -DestinationPath $backup
+    Compress-Archive -Path $dir -CompressionLevel Optimal -DestinationPath $backupFilePath
 }
 catch {
-    $errorMessage = "COMPRESSION ERROR source folder: " + $dir + " destination folder: " + $backup
+    $errorMessage = "COMPRESSION ERROR source folder: " + $dir + " destination folder: " + $backupFilePath
     echo $errorMessage >> $log
     exit
 }
@@ -60,17 +41,19 @@ catch {
 $accesstoken = "ya29.GlvpBY56Ptkh1DHUty-EKaXNkRiWMjHjq51ReTTGbEoWs1mBiWK3WsTQLocJi5rNI_CTmZpJqGuKsaUu35ya-pmZB9SkUHGfepOBH3wcFmohcM9AIQpl-UJQf9m2"
 $contenttype = "Content-type: application/x-zip-compressed"
 $uri = "https://www.googleapis.com/upload/drive/v3/files"
-$file = $backup + ".zip"
+$file = $backupFilePath + ".zip"
 $stream = New-Object System.IO.FileStream $file, 'Open'
 
 $Headers = @{
     "Authorization"           = "Bearer $accesstoken"
-    "Content-type"            = "application/json"
-    "X-Upload-Content-Type"   = $contenttype
+    "Content-type"            = $contenttype
     "X-Upload-Content-Length" = $stream.Length
 }
 $stream.Close()
 Invoke-RestMethod -Uri $uri -Method Post -InFile $file -Headers $Headers
+
+#remove uploaded zip file
+Remove-Item -Path $file
 
 echo $date >> $log
 echo Done. >> $log
