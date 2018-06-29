@@ -14,6 +14,7 @@ if ($answer.ToLowerInvariant().Equals("n")) {
 if (Test-Path -Path $backup) {
     $existingFiles = Get-ChildItem -Path $backup
     foreach ($file in $existingFiles) {
+        $file = $file -replace ".zip", ""
         $fileNameParsed = [datetime]::parseexact($file, 'yyyyMMddHHmmss', $null)
         if ($date.AddSeconds(-10) -lt $fileNameParsed) {
             $dateErrorMessage = "Script was executed at: " + $fileNameParsed + " now it is: " + $date
@@ -55,6 +56,21 @@ catch {
 }
 
 #UPLOAD COMPRESSED ARCHIVE TO GOOGLE DRIVE
+#accestoken has to be refreshed every 24h https://developers.google.com/oauthplayground, usage/explanation https://github.com/MVKozlov/GMGoogleDrive
+$accesstoken = "ya29.GlvpBY56Ptkh1DHUty-EKaXNkRiWMjHjq51ReTTGbEoWs1mBiWK3WsTQLocJi5rNI_CTmZpJqGuKsaUu35ya-pmZB9SkUHGfepOBH3wcFmohcM9AIQpl-UJQf9m2"
+$contenttype = "Content-type: application/x-zip-compressed"
+$uri = "https://www.googleapis.com/upload/drive/v3/files"
+$file = $backup + ".zip"
+$stream = New-Object System.IO.FileStream $file, 'Open'
+
+$Headers = @{
+    "Authorization"           = "Bearer $accesstoken"
+    "Content-type"            = "application/json"
+    "X-Upload-Content-Type"   = $contenttype
+    "X-Upload-Content-Length" = $stream.Length
+}
+$stream.Close()
+Invoke-RestMethod -Uri $uri -Method Post -InFile $file -Headers $Headers
 
 echo $date >> $log
 echo Done. >> $log
