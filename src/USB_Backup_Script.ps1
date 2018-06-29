@@ -38,22 +38,48 @@ catch {
 
 #UPLOAD COMPRESSED ARCHIVE TO GOOGLE DRIVE
 #accestoken has to be refreshed every 24h https://developers.google.com/oauthplayground, usage/explanation https://github.com/MVKozlov/GMGoogleDrive
-$accesstoken = "ya29.GlvpBY56Ptkh1DHUty-EKaXNkRiWMjHjq51ReTTGbEoWs1mBiWK3WsTQLocJi5rNI_CTmZpJqGuKsaUu35ya-pmZB9SkUHGfepOBH3wcFmohcM9AIQpl-UJQf9m2"
-$contenttype = "Content-type: application/x-zip-compressed"
+$accesstoken = "ya29.GlvpBYqr7udwTqBNKi4EuUOxKfGYFpNpDYj_zmGumvnfV-q6R0TSavLO124nASV_EAysG-R15FIMfH3QK6oh6Cuy47WbODSxSUc1WSNGI1svpYyy9yl4s7J6d_uC"
 $uri = "https://www.googleapis.com/upload/drive/v3/files"
-$file = $backupFilePath + ".zip"
-$stream = New-Object System.IO.FileStream $file, 'Open'
+$filePath = $backupFilePath + ".zip"
+
+# Get the source file contents and details, encode in base64
+$sourceItem = Get-Item $filePath
+$sourceBase64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($sourceItem.FullName))
+
+
+# Set the file metadata
+$uploadMetadata = @{
+    originalFilename = $sourceItem.Name
+    name = $sourceItem.Name
+    description = $sourceItem.VersionInfo.FileDescription
+}
+
+# Set the upload body
+$uploadBody = @"
+--boundary
+Content-Type: application/json; charset=UTF-8
+
+$($uploadMetadata | ConvertTo-Json)
+
+--boundary
+Content-Transfer-Encoding: base64
+Content-Type: application/zip
+
+$sourceBase64
+--boundary--
+"@
 
 $Headers = @{
     "Authorization"           = "Bearer $accesstoken"
-    "Content-type"            = $contenttype
-    "X-Upload-Content-Length" = $stream.Length
+    "Content-type"            = 'multipart/related; boundary=boundary'
+    "X-Upload-Content-Length" = $uploadBody.Length
 }
-$stream.Close()
-Invoke-RestMethod -Uri $uri -Method Post -InFile $file -Headers $Headers
+
+#Send upload- (POST) request
+Invoke-RestMethod -Uri $uri -Method Post -Headers $Headers -Body $uploadBody
 
 #remove uploaded zip file
-Remove-Item -Path $file
+Remove-Item -Path $filePath
 
 echo $date >> $log
 echo Done. >> $log
